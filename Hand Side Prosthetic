@@ -1,0 +1,127 @@
+#include <SPI.h>
+#include "RF24.h"
+RF24 radio(9,10);
+byte addresses[][6] = {"DANNYPANCH","PANCHDANNY"};
+bool radioNumber=1;// tx
+bool role = 1;//tx
+int RestThumb = A0;  // starts up with tidying up the values
+int RestPointer = A1;
+int RestMiddle = A2;
+int RestRingy = A3;
+
+int OpenedThumb =0;
+int OpenedPointer =0;
+int OpenedMiddle =0;
+int OpenedRingy  =0;
+
+int ClosedThumb;
+int ClosedPointer;
+int ClosedMiddle;
+int ClosedRingy;
+
+int thumb =0;
+int pointer =0;
+int middle =0;
+int ringy =0;
+
+
+
+
+float pressLength_ms = 0;
+
+struct best{ 
+  int buttonVal;
+  int buttonLength;} RPS;
+
+struct test{ 
+  int thumbang;int pointerang; int middleang; int ringyang;} data;
+
+
+const int buttonPin = 2;  // push button
+bool buttonPress; // value of button
+
+
+
+
+void setup() {
+
+  
+  pinMode(buttonPin,INPUT); // sets button as an input value
+ 
+
+
+
+ Serial.begin(9600);
+radio.begin();
+radio.setPALevel(RF24_PA_LOW);  
+radio.openWritingPipe(addresses[1]); 
+radio.openReadingPipe(1,addresses[0]);
+ radio.setPayloadSize(32);
+
+ pinMode(RestThumb, INPUT);
+ pinMode(RestPointer, INPUT);
+ pinMode(RestMiddle, INPUT);
+ pinMode(RestRingy, INPUT); 
+
+ ClosedThumb = analogRead(RestThumb);  // closedfinger is essenitall
+ ClosedPointer = analogRead(RestPointer); //y the value of the flex
+ ClosedMiddle = analogRead(RestMiddle); //sensor reading.
+ ClosedRingy = analogRead(RestRingy);
+
+
+ 
+}
+
+void loop() {
+RPS.buttonVal = digitalRead(buttonPin);// reads that if theres an input value isnt zero
+if (RPS.buttonVal == HIGH)
+ { radio.stopListening();
+ pressLength_ms = pressLength_ms + 100;
+ Serial.println(pressLength_ms);
+ RPS.buttonLength = pressLength_ms;
+ Serial.println(RPS.buttonLength);
+  radio.write( &RPS, sizeof( RPS));
+  Serial.println(RPS.buttonVal);
+   radio.startListening();}
+ else { pressLength_ms = 0;}
+ 
+thumb = analogRead(RestThumb);
+pointer = analogRead(RestPointer);
+middle = analogRead(RestMiddle);
+ringy = analogRead(RestRingy);
+
+ if(thumb > OpenedThumb)
+ OpenedThumb = thumb;
+ if(pointer > OpenedPointer)
+ OpenedPointer = pointer;
+ if(middle > OpenedMiddle)
+ OpenedMiddle = middle;
+ if(ringy > OpenedRingy)
+ OpenedRingy = ringy;
+
+ if(thumb < ClosedThumb)
+ ClosedThumb = thumb;
+ if(pointer < ClosedPointer)
+ ClosedPointer = pointer;
+ if(middle < ClosedMiddle)
+ ClosedMiddle = middle;
+ if(ringy < ClosedRingy)
+ ClosedRingy = ringy;
+
+ thumb = map(thumb ,ClosedThumb ,OpenedThumb ,0,180);
+ pointer = map(pointer, ClosedPointer, OpenedPointer ,0,180);
+ middle = map(middle, ClosedMiddle, OpenedMiddle , 0,180);
+ ringy = map(ringy, ClosedRingy, OpenedRingy, 0, 180);
+
+ data.thumbang = thumb;
+ data.pointerang = pointer;
+ data.middleang = middle;
+ data.ringyang = ringy;
+
+ radio.stopListening();
+ delay(50);
+ if (radio.write(&data, sizeof(data)))
+  radio.startListening();
+ }
+
+///tx///
