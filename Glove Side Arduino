@@ -1,0 +1,131 @@
+#include <Servo.h>
+#include <SPI.h>
+#include "RF24.h"
+RF24 radio(9,10);// 9 CE 10 CS
+byte addresses[][6] = {"DANNYPANCH","PANCHDANNY"};
+bool radioNumber=0; //sets it as a receiver
+bool role = 0;//sets it as a  reciever
+//button
+int buttonPin = 2;
+struct best{
+    int buttonVal; // button on vs off as a 1 or 0
+    int buttonLength; // ms of button hold
+    } RPS;  
+// data from the flex sensors
+struct test{// creates a structure//
+  int thumbmsg;
+  int pointermsg;
+  int middlemsg;
+  int ringymsg;
+}data ;// data is the structure name
+//randomizer
+long randomgesture;
+//servos
+Servo ServoThumb, ServoPointer, ServoMiddle, ServoRingy;
+//servo ints
+int ThumbAng = 0;// angle of thumb for servo
+int PointerAng = 0;
+int MiddleAng = 0;
+int RingyAng = 0;
+//FSM
+#define S_NOTHING 1
+#define S_FLEXMODE 2
+#define S_RPSMODE 3
+
+
+void setup() {
+randomSeed(analogRead(0));
+
+
+ Serial.begin(9600);
+    radio.begin();// activates modem
+ radio.setPALevel(RF24_PA_LOW);   //sets power level low
+    radio.openWritingPipe(addresses[0]); //sets the writing address
+    radio.openReadingPipe(1,addresses[1]); //sets the address to send
+    radio.setPayloadSize(32);//just for fun default max packet size
+    radio.startListening();// starts transmission
+
+
+ ServoThumb.attach(4);
+ ServoPointer.attach(5);
+ ServoMiddle.attach(6);
+ ServoRingy.attach(7);
+ Serial.println("Ready");
+}
+
+
+void loop() {
+static int state = S_FLEXMODE;
+
+    switch(state)
+    { 
+      
+case S_FLEXMODE:
+      delay(50);
+if(radio.available()){/// if theres a transmission
+  Serial.println("works");
+radio.read (&data, sizeof( data));
+radio.read (&RPS, sizeof(RPS));
+}//accepts data
+
+ServoThumb.write(data.thumbmsg);
+ServoPointer.write(data.pointermsg);
+ServoMiddle.write(data.middlemsg);
+ServoRingy.write(data.ringymsg);
+
+if (RPS.buttonLength == 1500)
+{state = S_RPSMODE;}
+break;
+
+case S_RPSMODE:
+Serial.println("RPS MODE ACTIVATED");
+delay(800);
+randomgesture = random(1,4);
+  ServoThumb.write(180);
+ ServoPointer.write(180);
+ ServoMiddle.write(180);
+ ServoRingy.write(180);
+ delay(800);
+ ServoThumb.write(0);
+ ServoPointer.write(0);
+ServoMiddle.write(0);
+ ServoRingy.write(0);
+ delay (800);
+ ServoThumb.write(0);
+ ServoPointer.write(180);
+ ServoMiddle.write(180);
+ ServoRingy.write(0);
+ delay(800);
+   ServoThumb.write(180);
+ ServoPointer.write(180);
+ ServoMiddle.write(180);
+ ServoRingy.write(180);
+ delay(800);
+
+ Serial.println(randomgesture);
+ if (randomgesture == 1){
+  ServoThumb.write(180);
+ ServoPointer.write(180);
+ ServoMiddle.write(180);
+ ServoRingy.write(180);
+ }
+ if (randomgesture == 2){
+  ServoThumb.write(0);
+ ServoPointer.write(0);
+ ServoMiddle.write(0);
+ ServoRingy.write(0);
+ }
+ 
+ if (randomgesture == 3){
+   ServoThumb.write(0);
+ ServoPointer.write(180);
+ ServoMiddle.write(180);
+ ServoRingy.write(0);}
+ delay(3000);
+ state = S_FLEXMODE;
+ break;
+ default:
+ state = S_FLEXMODE;
+ break;
+    }
+}
